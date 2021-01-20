@@ -8,6 +8,7 @@ from PIL import Image, ImageOps
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+import json
 
 class Detector:
     def __init__(self, model_path=None, camera_matrix_path=None):
@@ -28,11 +29,13 @@ class Detector:
             with open("./camera_parameters.json", 'r') as f:
                 self.camera_matrix = np.array(json.load(f))
         #
+        FLANN_INDEX_KDTREE = 0
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+        search_params = dict(checks=50)
         self.flann = cv2.FlannBasedMatcher(index_params,search_params)
         self.orb = cv2.xfeatures2d.SIFT_create()
         self.threshold = 350
         self.bandwidth = None
-        self.binary = np.zeros((frame.shape[0],frame.shape[1]))
         self.track = False
         self.counter = 0
         self.show = False
@@ -40,6 +43,12 @@ class Detector:
         self.temp = []
         self.frame = None
         self.gray = None
+        self.k = None
+        self.img = None
+        self.kp1 = None
+        self.des1 = None
+        self.kp2 = None
+        self.des2 = None
 
     def detect_icon(self, cut_image):
         image_icon = Image.fromarray(cut_image)
@@ -74,24 +83,16 @@ class Detector:
             # draw a rectangle around the region of interest
             cv2.rectangle(self.frame, self.refPt[0], self.refPt[1], (0, 255, 0), 2)
             cv2.imshow("frame", self.frame)
+            self.img = self.gray[self.temp[0][1]:self.temp[1][1],self.temp[0][0]:self.temp[1][0]]
+            # test_text = cv2.resize(test_text,(self.img.shape[1],self.img.shape[0]))
+            self.temp = []
+            self.kp1, self.des1 = self.orb.detectAndCompute(self.img,None)
+            self.track = True
         elif event == cv2.EVENT_MOUSEMOVE and flags == cv2.EVENT_FLAG_LBUTTON:
             try:
                 self.temp[1] = (x,y)
             except:
                 self.temp.append((x,y))
-    
-    # def click_and_crop(self, button, state, x, y):
-    #     if button == GLUT_LEFT_BUTTON:
-    #         if state == GLUT_DOWN:
-    #             self.refPt.append((x, y))
-    #             self.temp.append((x,y))
-    #         if state == GLUT_UP:
-    #             # record the ending (x, y) coordinates and indicate that
-    #             # the cropping operation is finished
-    #             self.refPt.append((x, y))
-    #             # draw a rectangle around the region of interest
-    #             cv2.rectangle(frame, refPt[0], refPt[1], (0, 255, 0), 2)
-    #             cv2.imshow("frame", frame)
 
     def main_detect(self, frame):
         #flip the frame coming from webcam
@@ -99,7 +100,7 @@ class Detector:
         self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         #set callback to control the mouse
         cv2.setMouseCallback("frame", self.click_and_crop)
-        k = cv2.waitKey(10)&0xFF
+        self.key = cv2.waitKey(10)&0xFF
 
         if len(self.temp) == 2:
             cv2.rectangle(self.frame, self.temp[0], self.temp[1], (0, 255, 0), 2)
@@ -107,60 +108,36 @@ class Detector:
             matchExist = True
             while matchExist:
                 matchExist = False
-                p2, des2 = self.orb.detectAndCompute(gray,None)
-                matches_ = self.flann.knnMatch(des1,des2,k=2)
+                self.kp2, self.des2 = self.orb.detectAndCompute(self.gray,None)
+                matches_ = self.flann.knnMatch(self.des1,self.des2,k=2)
 
-                n,lbls = keypoint_clustering([kp2[m.trainIdx] for m,_ in matches_])
+                n,lbls = keypoint_clustering([self.kp2[m.trainIdx] for m,_ in matches_])
                 for i in range(n):
-                    matches = np.array(matches_)[lblns==i].tolist()
+                    matches = np.array(matches_)[lbls==i].tolist()
                     matches = sorted(matches,key=lambda x: x[0].distance)
-                    matches = [match for match in matches if match[0].distance<threshold]
+                    matches = [match for match in matches if match[0].distance<self.threshold]
                     #matches = matches[:20]
                     if len(matches) > (0.75*len(matches_)/n):
-                        if True:
-                            src_pts = np.float32([kp1[m.queryIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
-                            dst_pts = np.float32([kp2[m.trainIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
-                            M,mask = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
-                            h,w = img.shape
-                            pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
-                            dst = cv2.perspectiveTransform(pts,M)
-                            
-                            projection = projection_matrix(self.camera_matrix,M)
+                        src_pts = np.float32([self.kp1[m.queryIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
+                        dst_pts = np.float32([self.kp2[m.trainIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
+                        M,mask = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
+                        h,w = self.img.shape
+                        pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
+                        dst = cv2.perspectiveTransform(pts,M)
+                        
+                        projection = projection_matrix(self.camera_matrix,M)
 
-                            self.frame = cv2.polylines(self.frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-                            cv2.fillPoly(gray,[np.int32(dst)],255)
-                        else:
-                            #except Exception as e:
-                            print(e)
+                        self.frame = cv2.polylines(self.frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+                        cv2.fillPoly(self.gray,[np.int32(dst)],255)
                     else: 
                         matchExist = False
 
         cv2.imshow('frame',self.frame)
         cv2.waitKey(1)
 
-        if k == ord('q'):
-            break
-        
-        #press d to start tracking
-        elif k == ord('d'):
-            kp1, des1 = self.orb.detectAndCompute(img,None)
-            self.track = True
-
-        elif k == ord('z'):
-            #reset all items
-            self.temp = []
-            self.track = False
-            self.img = None
-        #press s to crop the region of interest
-        #mah, just combine s and d then
-        elif k == ord('s'):
-            #save the cropped part out and save it into img variable
-            self.img = gray[temp[0][1]:temp[1][1],temp[0][0]:temp[1][0]]
-            test_text = cv2.resize(test_text,(img.shape[1],img.shape[0]))
-            self.temp = []
-            kp1, des1 = self.orb.detectAndCompute(img,None)
-            self.track = True
-        if img is not None:
+        if self.img is not None:
             cv2.imshow('img',self.img)
             pass
+
+        return 0
         

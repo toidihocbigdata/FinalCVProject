@@ -1,0 +1,3 @@
+0 king
+1 queen
+2 knight

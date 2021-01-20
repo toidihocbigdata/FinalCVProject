@@ -37,7 +37,7 @@ def keypoint_clustering(kp):
     labels = ms.labels_
     cluster_centers = ms.cluster_centers_
     #
-    print(np.unique(labels,return_counts=True)[1])
+    # print(np.unique(labels,return_counts=True)[1])
     n_cluster = len(np.unique(labels))
     return n_cluster,labels
 
