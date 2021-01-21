@@ -137,6 +137,7 @@ class Detector:
         if len(self.temp) == 2:
             cv2.rectangle(self.frame, self.temp[0], self.temp[1], (0, 255, 0), 2)
         if self.track:
+            cv2.destroyAllWindows()
             matchExist = True
             while matchExist:
                 matchExist = False
@@ -162,7 +163,7 @@ class Detector:
                     else: 
                         matchExist = False
 
-            cv2.imshow('frame',self.frame)
+            # cv2.imshow('frame',self.frame)
             self.tvecs.shape = (3,1)
             return [[self.rvecs, self.tvecs, self.label]]
         else:

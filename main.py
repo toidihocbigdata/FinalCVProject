@@ -38,6 +38,10 @@ class AR:
         self.cone = None
         self.sphere = None
         self.isShapeSwitch = False;
+
+        #
+
+         
  
         # initialise texture
         self.texture_background = None
@@ -46,8 +50,8 @@ class AR:
         self.view_matrix = np.array([])
 
         # refine arg
-        self.deltaX = 0.0
-        self.deltaY = 0.0
+        self.deltaX = 0.5
+        self.deltaY = 0.3
         self.deltaZ = 0.0
  
     def initGL(self, Width, Height):
@@ -70,6 +74,7 @@ class AR:
         # assign texture
         glEnable(GL_TEXTURE_2D)
         self.texture_background = glGenTextures(1)
+        self.texture_object = glGenTextures(1)
 
     def buildViewMatrix(self, label, rvec, tvec):
         # build view matrix
@@ -117,8 +122,28 @@ class AR:
 
         glutSwapBuffers()
 
+    def init_object_texture(self,image_filepath):
+        #THE COMMENTS FOR THE FOLLOWING STEPS ARE SAME AS IN THE ABOVE FUNCTION, THE ONLY DIFFERENCE IS, HERE INSTEAD OF USING CAMERA FRAME WE USE IMAGE FILES
+        tex = cv2.imread(image_filepath)
+        tex = cv2.flip(tex, 0)
+        tex = Image.fromarray(tex)
+        ix = tex.size[0]
+        iy = tex.size[1]
+        tex = tex.tobytes("raw","BGRX", 0, -1)
+        # if self.texture_object is None:
+        #     self.texture_object = glGenTextures(1)
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, self.texture_object)
+        glEnable(GL_TEXTURE_2D)
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, ix, iy, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex)
+        return None
+
     def render3Dobj(self, label):
-        glutWireTeapot(0.3) #HARCODE
+        self.init_object_texture("resources/basic_object/wave-textures-new.png")
+        glutSolidTeapot(0.3) #HARCODE
         # glCallList(self.pikachu.gl_list)
 
     def handleImage(self, image):
@@ -141,8 +166,9 @@ class AR:
 
         for ret in results:
             rvec, tvec, label = ret
-
-            #build view matrix
+            
+            # print(tvec)
+            # build view matrix
             tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
 
             self.buildViewMatrix(label, rvec, tvec)
@@ -162,23 +188,6 @@ class AR:
         glTexCoord2f(0.0, 0.0); glVertex3f(-4.0,  3.0, 0.0)
         glEnd()
 
-    def keyPressed(self, *arg):
-        one_unit = 0.3
-        if arg[0] == 33:
-            sys.exit()
-        if arg[0] == "X":
-            self.deltaX = self.deltaX + one_unit
-        if arg[0] == "x":
-            self.deltaX = self.deltaX - one_unit
-        if arg[0] == "Y":
-            self.deltaY = self.deltaY + one_unit
-        if arg[0] == "y":
-            self.deltaY = self.deltaY - one_unit
-        if arg[0] == "Z":
-            self.deltaZ = self.deltaZ + one_unit
-        if arg[0] == "z":
-            self.deltaZ = self.deltaZ - one_unit
-
     def main(self):
         # setup and run OpenGL
         glutInit()
@@ -188,7 +197,6 @@ class AR:
         self.window_id = glutCreateWindow("OpenGL Window")
         glutDisplayFunc(self.drawScene)
         glutIdleFunc(self.drawScene)
-        glutKeyboardFunc(self.keyPressed)
         self.initGL(640, 480)
         glutMainLoop()
 
