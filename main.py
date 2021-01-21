@@ -66,8 +66,6 @@ class AR:
         self.sphere = OBJ('resources/basic_object/sphere.obj')
         self.pikachu = OBJ('resources/Pikachu_B/Pikachu_B.obj')
         # self.skull = OBJ('resources/Skull/12140_Skull_v3_L2.obj')
-        # TODO
-        # load other 3d object
   
         # assign texture
         glEnable(GL_TEXTURE_2D)
@@ -120,7 +118,7 @@ class AR:
         glutSwapBuffers()
 
     def render3Dobj(self, label):
-        glutWireTeapot(0.5) #HARCODE
+        glutWireTeapot(0.3) #HARCODE
         # glCallList(self.pikachu.gl_list)
 
     def handleImage(self, image):
@@ -143,11 +141,9 @@ class AR:
 
         for ret in results:
             rvec, tvec, label = ret
-            print("rvec", rvec)
-            print("tvec", tvec)
+
             #build view matrix
-            # tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
-            tvec = np.array([[-0.71466162], [-0.34339215], [ 3.01986907]]) #HARDCODE
+            tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
 
             self.buildViewMatrix(label, rvec, tvec)
 
@@ -167,20 +163,21 @@ class AR:
         glEnd()
 
     def keyPressed(self, *arg):
+        one_unit = 0.3
         if arg[0] == 33:
             sys.exit()
         if arg[0] == "X":
-            self.deltaX = self.deltaX + 0.1
+            self.deltaX = self.deltaX + one_unit
         if arg[0] == "x":
-            self.deltaX = self.deltaX - 0.1
+            self.deltaX = self.deltaX - one_unit
         if arg[0] == "Y":
-            self.deltaY = self.deltaY + 0.1
+            self.deltaY = self.deltaY + one_unit
         if arg[0] == "y":
-            self.deltaY = self.deltaY - 0.1
+            self.deltaY = self.deltaY - one_unit
         if arg[0] == "Z":
-            self.deltaZ = self.deltaZ + 0.1
+            self.deltaZ = self.deltaZ + one_unit
         if arg[0] == "z":
-            self.deltaZ = self.deltaZ - 0.1
+            self.deltaZ = self.deltaZ - one_unit
 
     def main(self):
         # setup and run OpenGL

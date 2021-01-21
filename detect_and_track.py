@@ -98,29 +98,6 @@ class Detector:
             except:
                 self.temp.append((x,y))
 
-    # def find_rvec_tvec(self,M):
-    #     R = np.zeros((3,3),dtype='float')
-    #     norm = np.sqrt( M[0,0]*M[0,0]
-    #                     +M[1,0]*M[1,0]
-    #                     +M[2,0]*M[2,0]
-    #                     +M[0,2]*M[0,2]
-    #                     +M[1,2]*M[1,2]
-    #                     +M[2,2]*M[2,2]
-    #                     +M[0,1]*M[0,1]
-    #                     +M[1,1]*M[1,1]
-    #                     +M[2,1]*M[2,1])
-    #     if norm == 0: 
-    #         return cv2.Rodrigues(R)[0], np.zeros(3,dtype='float')
-    #     M /= (norm+1e-8)
-    #     c1 = M[:,0]
-    #     c2 = M[:,1]
-    #     c3 = np.cross(c1,c2)
-    #     tvec = M[:,2]
-    #     R[:,0] = c1
-    #     R[:,1] = c2
-    #     R[:,2] = c3
-    #     rvec,_ = cv2.Rodrigues(R)
-    #     return rvec, tvec
     def find_rvec_tvec(self,homography):
         #def projection_matrix(camera_parameters, homography):
         """
