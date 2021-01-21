@@ -49,6 +49,9 @@ class Detector:
         self.des1 = None
         self.kp2 = None
         self.des2 = None
+        self.rvecs = None
+        self.tvecs = None
+        self.label = 0
 
     def detect_icon(self, cut_image):
         image_icon = Image.fromarray(cut_image)
@@ -88,11 +91,64 @@ class Detector:
             self.temp = []
             self.kp1, self.des1 = self.orb.detectAndCompute(self.img,None)
             self.track = True
+            cv2.imshow('img',self.img)
         elif event == cv2.EVENT_MOUSEMOVE and flags == cv2.EVENT_FLAG_LBUTTON:
             try:
                 self.temp[1] = (x,y)
             except:
                 self.temp.append((x,y))
+
+    # def find_rvec_tvec(self,M):
+    #     R = np.zeros((3,3),dtype='float')
+    #     norm = np.sqrt( M[0,0]*M[0,0]
+    #                     +M[1,0]*M[1,0]
+    #                     +M[2,0]*M[2,0]
+    #                     +M[0,2]*M[0,2]
+    #                     +M[1,2]*M[1,2]
+    #                     +M[2,2]*M[2,2]
+    #                     +M[0,1]*M[0,1]
+    #                     +M[1,1]*M[1,1]
+    #                     +M[2,1]*M[2,1])
+    #     if norm == 0: 
+    #         return cv2.Rodrigues(R)[0], np.zeros(3,dtype='float')
+    #     M /= (norm+1e-8)
+    #     c1 = M[:,0]
+    #     c2 = M[:,1]
+    #     c3 = np.cross(c1,c2)
+    #     tvec = M[:,2]
+    #     R[:,0] = c1
+    #     R[:,1] = c2
+    #     R[:,2] = c3
+    #     rvec,_ = cv2.Rodrigues(R)
+    #     return rvec, tvec
+    def find_rvec_tvec(self,homography):
+        #def projection_matrix(camera_parameters, homography):
+        """
+        From the camera calibration matrix and the estimated homography
+        compute the 3D projection matrix
+        """
+        # Compute rotation along the x and y axis as well as the translation
+        homography = homography * (-1)
+        rot_and_transl = np.dot(np.linalg.inv(self.camera_matrix), homography)
+        col_1 = rot_and_transl[:, 0]
+        col_2 = rot_and_transl[:, 1]
+        col_3 = rot_and_transl[:, 2]
+        # normalise vectors
+        l = math.sqrt(np.linalg.norm(col_1, 2) * np.linalg.norm(col_2, 2))
+        rot_1 = col_1 / l
+        rot_2 = col_2 / l
+        tvec = col_3 / l
+        tvec = tvec / -260.0 # Hardcode
+        # compute the orthonormal basis
+        c = rot_1 + rot_2
+        p = np.cross(rot_1, rot_2)
+        d = np.cross(c, p)
+        rot_1 = np.dot(c / np.linalg.norm(c, 2) + d / np.linalg.norm(d, 2), 1 / math.sqrt(2))
+        rot_2 = np.dot(c / np.linalg.norm(c, 2) - d / np.linalg.norm(d, 2), 1 / math.sqrt(2))
+        rot_3 = np.cross(rot_1, rot_2)
+        R = np.stack((rot_1,rot_2,rot_3)).T
+        rvec = cv2.Rodrigues(R)[0]
+        return rvec,tvec
 
     def main_detect(self, frame):
         #flip the frame coming from webcam
@@ -100,7 +156,6 @@ class Detector:
         self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         #set callback to control the mouse
         cv2.setMouseCallback("frame", self.click_and_crop)
-        self.key = cv2.waitKey(10)&0xFF
 
         if len(self.temp) == 2:
             cv2.rectangle(self.frame, self.temp[0], self.temp[1], (0, 255, 0), 2)
@@ -110,7 +165,6 @@ class Detector:
                 matchExist = False
                 self.kp2, self.des2 = self.orb.detectAndCompute(self.gray,None)
                 matches_ = self.flann.knnMatch(self.des1,self.des2,k=2)
-
                 n,lbls = keypoint_clustering([self.kp2[m.trainIdx] for m,_ in matches_])
                 for i in range(n):
                     matches = np.array(matches_)[lbls==i].tolist()
@@ -121,23 +175,21 @@ class Detector:
                         src_pts = np.float32([self.kp1[m.queryIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
                         dst_pts = np.float32([self.kp2[m.trainIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
                         M,mask = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
+                        self.rvecs , self.tvecs = self.find_rvec_tvec(M)
                         h,w = self.img.shape
                         pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
                         dst = cv2.perspectiveTransform(pts,M)
-                        
-                        projection = projection_matrix(self.camera_matrix,M)
-
+                        # projection = projection_matrix(self.camera_matrix,M)
                         self.frame = cv2.polylines(self.frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
                         cv2.fillPoly(self.gray,[np.int32(dst)],255)
                     else: 
                         matchExist = False
 
-        cv2.imshow('frame',self.frame)
-        cv2.waitKey(1)
-
-        if self.img is not None:
-            cv2.imshow('img',self.img)
-            pass
-
-        return 0
+            cv2.imshow('frame',self.frame)
+            self.tvecs.shape = (3,1)
+            return [[self.rvecs, self.tvecs, self.label]]
+        else:
+            cv2.imshow('frame',self.frame)
+            return 0
+        
         

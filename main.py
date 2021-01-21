@@ -2,13 +2,18 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import cv2
+import sys
 from PIL import Image
 import numpy as np
 from webcam import Webcam
 from glyphs.constants import *
 from objloader import *
-# from glyphs.glyphs import Glyphs
-from detect_and_track import *
+
+us = True
+if us is not True:
+    from glyphs.glyphs import Glyphs
+else:
+    from detect_and_track import *
   
 class AR:
     # constants
@@ -23,8 +28,11 @@ class AR:
         self.webcam.start()
   
         # initialise detector
-        # self.glyphs = Glyphs()
-        self.detector = Detector    (model_path="trained_detect_icon_model/keras_model.h5", camera_matrix_path="camera_parameters.json")
+        if us is not True:
+            self.glyphs = Glyphs()
+        else:
+            self.detector = Detector(   model_path="trained_detect_icon_model/keras_model.h5", 
+                                        camera_matrix_path="camera_parameters.json")
   
         # initialise shapes
         self.cone = None
@@ -36,6 +44,11 @@ class AR:
  
         # initialise view matrix
         self.view_matrix = np.array([])
+
+        # refine arg
+        self.deltaX = 0.0
+        self.deltaY = 0.0
+        self.deltaZ = 0.0
  
     def initGL(self, Width, Height):
         glClearColor(0.0, 0.0, 0.0, 0.0)
@@ -107,8 +120,8 @@ class AR:
         glutSwapBuffers()
 
     def render3Dobj(self, label):
-        # glutWireTeapot(0.5) #HARCODE
-        glCallList(self.pikachu.gl_list)
+        glutWireTeapot(0.5) #HARCODE
+        # glCallList(self.pikachu.gl_list)
 
     def handleImage(self, image):
 
@@ -116,8 +129,11 @@ class AR:
         results = []
 
         try:
-            # results = self.glyphs.detect(cv2.flip(image, 1)) #TODO create detector
-            results = self.detector.main_detect(image)
+            if us is not True:
+                # results = self.glyphs.detect(image) #TODO create detector
+                results = self.glyphs.detect(cv2.flip(image, 1)) #TODO create detector
+            else:
+                results = self.detector.main_detect(image)
         except Exception as ex:
             print("Exception !: ")
             print(ex)
@@ -127,7 +143,12 @@ class AR:
 
         for ret in results:
             rvec, tvec, label = ret
+            print("rvec", rvec)
+            print("tvec", tvec)
             #build view matrix
+            # tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
+            tvec = np.array([[-0.71466162], [-0.34339215], [ 3.01986907]]) #HARDCODE
+
             self.buildViewMatrix(label, rvec, tvec)
 
             # load view matrix and draw shape
@@ -145,6 +166,22 @@ class AR:
         glTexCoord2f(0.0, 0.0); glVertex3f(-4.0,  3.0, 0.0)
         glEnd()
 
+    def keyPressed(self, *arg):
+        if arg[0] == 33:
+            sys.exit()
+        if arg[0] == "X":
+            self.deltaX = self.deltaX + 0.1
+        if arg[0] == "x":
+            self.deltaX = self.deltaX - 0.1
+        if arg[0] == "Y":
+            self.deltaY = self.deltaY + 0.1
+        if arg[0] == "y":
+            self.deltaY = self.deltaY - 0.1
+        if arg[0] == "Z":
+            self.deltaZ = self.deltaZ + 0.1
+        if arg[0] == "z":
+            self.deltaZ = self.deltaZ - 0.1
+
     def main(self):
         # setup and run OpenGL
         glutInit()
@@ -154,7 +191,7 @@ class AR:
         self.window_id = glutCreateWindow("OpenGL Window")
         glutDisplayFunc(self.drawScene)
         glutIdleFunc(self.drawScene)
-        # glutKeyboardFunc(self.keyPressed)
+        glutKeyboardFunc(self.keyPressed)
         self.initGL(640, 480)
         glutMainLoop()
 
