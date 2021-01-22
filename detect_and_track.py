@@ -154,7 +154,6 @@ class Detector:
                     matches = np.array(matches_)[lbls==i].tolist()
                     matches = sorted(matches,key=lambda x: x[0].distance)
                     matches = [match for match in matches if match[0].distance<self.threshold]
-                    #matches = matches[:20]
                     if len(matches) > (0.75*len(matches_)/n):
                         src_pts = np.float32([self.kp1[m.queryIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
                         dst_pts = np.float32([self.kp2[m.trainIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)

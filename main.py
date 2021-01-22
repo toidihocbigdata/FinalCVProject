@@ -39,10 +39,6 @@ class AR:
         self.sphere = None
         self.isShapeSwitch = False;
 
-        #
-
-         
- 
         # initialise texture
         self.texture_background = None
  
@@ -66,10 +62,10 @@ class AR:
         glMatrixMode(GL_MODELVIEW)
 
         # assign shapes
-        self.cone = OBJ('resources/basic_object/cone.obj')
-        self.sphere = OBJ('resources/basic_object/sphere.obj')
-        self.pikachu = OBJ('resources/Pikachu_B/Pikachu_B.obj')
-        self.skull = OBJ('resources/Skull/12140_Skull_v3_L2.obj')
+        # self.cone       = OBJ('resources/basic_object/cone.obj')
+        # self.sphere     = OBJ('resources/basic_object/sphere.obj')
+        self.pikachu    = OBJ('resources/Pikachu_B/Pikachu_B.obj')
+        self.skull      = OBJ('resources/Skull/12140_Skull_v3_L2.obj')
   
         # assign texture
         glEnable(GL_TEXTURE_2D)
@@ -79,6 +75,17 @@ class AR:
     def buildViewMatrix(self, label, rvec, tvec):
         # build view matrix
         rmtx = cv2.Rodrigues(rvec)[0]
+
+        if label == 2: # skull
+            self.deltaX = 0.315
+            self.deltaY = 0.3
+            tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
+        elif label == 1:
+            self.deltaX = 0.5
+            self.deltaY = 0.3
+            tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
+        else:
+            pass
         # TODO 
         self.view_matrix  = np.array(   [[rmtx[0][0],   rmtx[0][1],     rmtx[0][2],     tvec[0]],
                                         [rmtx[1][0],    rmtx[1][1],     rmtx[1][2],     tvec[1]],
@@ -144,6 +151,7 @@ class AR:
     def render3Dobj(self, label):
         if label == 0:
             self.init_object_texture("resources/basic_object/wave-textures.png")
+            glRotate(180, 0, 1, 0)
             glutSolidTeapot(0.3) #HARCODE
         elif label == 1:
             glRotate(190, 0, 1, 0)
