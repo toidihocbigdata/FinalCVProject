@@ -51,7 +51,8 @@ class Detector:
         self.des2 = None
         self.rvecs = None
         self.tvecs = None
-        self.label = 0
+        self.label = -1
+        self.counterFrame = 0
 
     def detect_icon(self, cut_image):
         image_icon = Image.fromarray(cut_image)
@@ -67,7 +68,8 @@ class Detector:
         self.icon_data[0] = normalized_image_array
         # run the inference
         label = self.icon_model.predict(self.icon_data)
-        # print("label_detected", np.argmax(label))
+        print("label_detected", label)
+        label = np.argmax(label)
         return label
 
     def click_and_crop(self, event, x, y, flags, param):
@@ -129,7 +131,11 @@ class Detector:
 
     def main_detect(self, frame):
         #flip the frame coming from webcam
+        self.counterFrame = self.counterFrame + 1
         self.frame = cv2.flip(frame, 1)
+        if (self.counterFrame % 60 == 1) or (self.label == -1):
+            self.label = self.detect_icon(frame)
+            print("label", self.label)
         self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         #set callback to control the mouse
         cv2.setMouseCallback("frame", self.click_and_crop)

@@ -31,7 +31,7 @@ class AR:
         if us is not True:
             self.glyphs = Glyphs()
         else:
-            self.detector = Detector(   model_path="trained_detect_icon_model/keras_model.h5", 
+            self.detector = Detector(   model_path="new_icon_detector_model/keras_model.h5", 
                                         camera_matrix_path="camera_parameters.json")
   
         # initialise shapes
@@ -69,7 +69,7 @@ class AR:
         self.cone = OBJ('resources/basic_object/cone.obj')
         self.sphere = OBJ('resources/basic_object/sphere.obj')
         self.pikachu = OBJ('resources/Pikachu_B/Pikachu_B.obj')
-        # self.skull = OBJ('resources/Skull/12140_Skull_v3_L2.obj')
+        self.skull = OBJ('resources/Skull/12140_Skull_v3_L2.obj')
   
         # assign texture
         glEnable(GL_TEXTURE_2D)
@@ -142,9 +142,20 @@ class AR:
         return None
 
     def render3Dobj(self, label):
-        self.init_object_texture("resources/basic_object/wave-textures-new.png")
-        glutSolidTeapot(0.3) #HARCODE
-        # glCallList(self.pikachu.gl_list)
+        if label == 0:
+            self.init_object_texture("resources/basic_object/wave-textures.png")
+            glutSolidTeapot(0.3) #HARCODE
+        elif label == 1:
+            glRotate(190, 0, 1, 0)
+            glCallList(self.pikachu.gl_list)
+        elif label == 2:
+            glScalef(0.02, 0.02, 0.02)
+            glRotate(90, 0, 0, 1)
+            glRotate(90, 1, 0, 0)
+            glRotate(90, 0, 1, 0)
+            glCallList(self.skull.gl_list)
+        else:
+            pass
 
     def handleImage(self, image):
 
