@@ -81,8 +81,9 @@ class AR:
             self.deltaY = 0.3
             tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
         elif label == 1:
-            self.deltaX = 0.5
+            self.deltaX = 0.3
             self.deltaY = 0.3
+            self.deltaZ = -0.1
             tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
         else:
             pass

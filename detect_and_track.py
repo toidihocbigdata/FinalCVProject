@@ -131,11 +131,10 @@ class Detector:
 
     def main_detect(self, frame):
         #flip the frame coming from webcam
-        self.counterFrame = self.counterFrame + 1
         self.frame = cv2.flip(frame, 1)
-        if (self.counterFrame % 60 == 1) or (self.label == -1):
-            self.label = self.detect_icon(frame)
-            print("label", self.label)
+        # if (self.counterFrame % 60 == 1) or (self.label == -1):
+        #     self.label = self.detect_icon(frame)
+        #     print("label", self.label)
         self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         #set callback to control the mouse
         cv2.setMouseCallback("frame", self.click_and_crop)
@@ -164,9 +163,16 @@ class Detector:
                         dst = cv2.perspectiveTransform(pts,M)
                         # projection = projection_matrix(self.camera_matrix,M)
                         self.frame = cv2.polylines(self.frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-                        cv2.fillPoly(self.gray,[np.int32(dst)],255)
+                        cv2.fillPoly(self.gray,[np.int32(dst)],255) 
+                            # print("label", self.label)
                     else: 
                         matchExist = False
+            
+            self.counterFrame = self.counterFrame + 1               
+            if (self.counterFrame % 60 == 1) :
+                perspectiveM = cv2.getPerspectiveTransform(np.float32(dst),pts)
+                cut_image = cv2.warpPerspective(self.frame,perspectiveM,(w,h))
+                self.label = self.detect_icon(cut_image)
 
             # cv2.imshow('frame',self.frame)
             self.tvecs.shape = (3,1)

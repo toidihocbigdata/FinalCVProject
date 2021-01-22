@@ -1,0 +1,3 @@
+0 teapot
+1 pikachu
+2 skull
