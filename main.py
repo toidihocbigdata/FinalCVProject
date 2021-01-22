@@ -77,15 +77,18 @@ class AR:
         rmtx = cv2.Rodrigues(rvec)[0]
 
         if label == 2: # skull
-            self.deltaX = 0.315
-            self.deltaY = 0.3
+            self.deltaX = 0.1 + 0.315
+            self.deltaY = 0.2 + 0.3
             tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
-        elif label == 1:
+        elif label == 1: #pikachu
             self.deltaX = 0.3
             self.deltaY = 0.3
-            self.deltaZ = -0.1
+            self.deltaZ = 1.1
             tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
         else:
+            self.deltaX = 0.4
+            self.deltaY = 0.3
+            tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
             pass
         # TODO 
         self.view_matrix  = np.array(   [[rmtx[0][0],   rmtx[0][1],     rmtx[0][2],     tvec[0]],
@@ -155,8 +158,10 @@ class AR:
             glRotate(180, 0, 1, 0)
             glutSolidTeapot(0.3) #HARCODE
         elif label == 1:
-            glRotate(190, 0, 1, 0)
+            glRotate(210, 0, 1, 0)
+            glRotate(90, 1, 0, 0)
             glCallList(self.pikachu.gl_list)
+            glTranslatef(0.5, 0.0, 0.0)
         elif label == 2:
             glScalef(0.02, 0.02, 0.02)
             glRotate(90, 0, 0, 1)
@@ -189,7 +194,6 @@ class AR:
             
             # print(tvec)
             # build view matrix
-            tvec = tvec + np.array([[self.deltaX], [self.deltaY], [self.deltaZ]])
 
             self.buildViewMatrix(label, rvec, tvec)
 

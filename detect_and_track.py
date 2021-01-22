@@ -53,9 +53,13 @@ class Detector:
         self.tvecs = None
         self.label = -1
         self.counterFrame = 0
+        self.cut_image = None
+        self.dst = None
+        self.pts = None
+        self.perspectiveM = None
 
-    def detect_icon(self, cut_image):
-        image_icon = Image.fromarray(cut_image)
+    def detect_icon(self):
+        image_icon = Image.fromarray(self.cut_image)
         image_icon = ImageOps.fit(image_icon, self.icon_size, Image.ANTIALIAS)
         #turn the image into a numpy array
         image_array = np.asarray(image_icon)
@@ -68,9 +72,10 @@ class Detector:
         self.icon_data[0] = normalized_image_array
         # run the inference
         label = self.icon_model.predict(self.icon_data)
-        print("label_detected", label)
-        label = np.argmax(label)
-        return label
+        # print("label_detected", label)
+        if (np.max(label) > 0.80):
+            self.label = np.argmax(label)
+        return 0
 
     def click_and_crop(self, event, x, y, flags, param):
         # grab references to the global variables
@@ -159,24 +164,27 @@ class Detector:
                         M,mask = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
                         self.rvecs , self.tvecs = self.find_rvec_tvec(M)
                         h,w = self.img.shape
-                        pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
-                        dst = cv2.perspectiveTransform(pts,M)
+                        self.pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
+                        self.dst = cv2.perspectiveTransform(self.pts,M)
                         # projection = projection_matrix(self.camera_matrix,M)
-                        self.frame = cv2.polylines(self.frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-                        cv2.fillPoly(self.gray,[np.int32(dst)],255) 
+                        self.frame = cv2.polylines(self.frame, [np.int32(self.dst)], True, 255, 3, cv2.LINE_AA)
+                        cv2.fillPoly(self.gray,[np.int32(self.dst)],255) 
                             # print("label", self.label)
                     else: 
                         matchExist = False
             
             self.counterFrame = self.counterFrame + 1               
-            if (self.counterFrame % 60 == 1) :
-                perspectiveM = cv2.getPerspectiveTransform(np.float32(dst),pts)
-                cut_image = cv2.warpPerspective(self.frame,perspectiveM,(w,h))
-                self.label = self.detect_icon(cut_image)
+            if (self.counterFrame % 100 == 1) :
+                self.perspectiveM = cv2.getPerspectiveTransform(np.float32(self.dst),self.pts)
+                self.cut_image = cv2.warpPerspective(self.frame, self.perspectiveM, self.img.shape)
+                self.detect_icon()
 
             # cv2.imshow('frame',self.frame)
-            self.tvecs.shape = (3,1)
-            return [[self.rvecs, self.tvecs, self.label]]
+            if self.label > -1:
+                self.tvecs.shape = (3,1)    
+                return [[self.rvecs, self.tvecs, self.label]]
+            else:
+                return 0
         else:
             cv2.imshow('frame',self.frame)
             return 0
