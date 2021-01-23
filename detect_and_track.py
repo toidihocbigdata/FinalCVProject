@@ -53,11 +53,13 @@ class Detector:
         self.tvecs = None
         self.label = -1
         self.counterFrame = 0
+        self.M = None#np.zeros((3,3),dtype='float')
         self.cut_image = None
         self.dst = None
         self.pts = None
         self.perspectiveM = None
-
+        self.Found = False
+        self.haventFound = 5
     def detect_icon(self):
         image_icon = Image.fromarray(self.cut_image)
         image_icon = ImageOps.fit(image_icon, self.icon_size, Image.ANTIALIAS)
@@ -98,6 +100,7 @@ class Detector:
             self.temp = []
             self.kp1, self.des1 = self.orb.detectAndCompute(self.img,None)
             self.track = True
+            
             cv2.imshow('img',self.img)
         elif event == cv2.EVENT_MOUSEMOVE and flags == cv2.EVENT_FLAG_LBUTTON:
             try:
@@ -137,9 +140,6 @@ class Detector:
     def main_detect(self, frame):
         #flip the frame coming from webcam
         self.frame = cv2.flip(frame, 1)
-        # if (self.counterFrame % 60 == 1) or (self.label == -1):
-        #     self.label = self.detect_icon(frame)
-        #     print("label", self.label)
         self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         #set callback to control the mouse
         cv2.setMouseCallback("frame", self.click_and_crop)
@@ -149,36 +149,52 @@ class Detector:
         if self.track:
             cv2.destroyAllWindows()
             matchExist = True
+            self.Found = True
             while matchExist:
                 matchExist = False
+
                 self.kp2, self.des2 = self.orb.detectAndCompute(self.gray,None)
                 matches_ = self.flann.knnMatch(self.des1,self.des2,k=2)
-                n,lbls = keypoint_clustering([self.kp2[m.trainIdx] for m,_ in matches_])
+                n = 1
+                #n,lbls = keypoint_clustering([self.kp2[m.trainIdx] for m,_ in matches_])
                 for i in range(n):
-                    matches = np.array(matches_)[lbls==i].tolist()
+                    
+                    matches = matches_#np.array(matches_)[lbls==i].tolist()
                     matches = sorted(matches,key=lambda x: x[0].distance)
                     matches = [match for match in matches if match[0].distance<self.threshold]
-                    if len(matches) > (0.75*len(matches_)/n):
+                    if len(matches) > max((0.75*len(matches_)/n),20):
+                        self.haventFound = 5
                         src_pts = np.float32([self.kp1[m.queryIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
                         dst_pts = np.float32([self.kp2[m.trainIdx].pt for m,_ in matches[:50]]).reshape(-1,1,2)
-                        M,mask = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
-                        self.rvecs , self.tvecs = self.find_rvec_tvec(M)
-                        h,w = self.img.shape
-                        self.pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
-                        self.dst = cv2.perspectiveTransform(self.pts,M)
-                        # projection = projection_matrix(self.camera_matrix,M)
-                        self.frame = cv2.polylines(self.frame, [np.int32(self.dst)], True, 255, 3, cv2.LINE_AA)
-                        cv2.fillPoly(self.gray,[np.int32(self.dst)],255) 
+                        M,_ = cv2.findHomography(src_pts,dst_pts,cv2.RANSAC,5.0)
+                        if self.M is None: self.M = M
+                        elif np.sum((M-self.M)**2) > 4:
+                            self.M = M
+                        self.rvecs , self.tvecs = self.find_rvec_tvec(self.M)
+                        
+                        
+                        #cv2.fillPoly(self.gray,[np.int32(self.dst)],255) 
                             # print("label", self.label)
-                    else: 
+                    else:
+                        self.Found = False 
+                        #self.M = None
+                        self.haventFound -= 1
+                        self.counterFrame = 0
                         matchExist = False
             
             self.counterFrame = self.counterFrame + 1               
             if (self.counterFrame % 100 == 1) :
-                self.perspectiveM = cv2.getPerspectiveTransform(np.float32(self.dst),self.pts)
-                self.cut_image = cv2.warpPerspective(self.frame, self.perspectiveM, self.img.shape)
-                self.detect_icon()
-
+                if self.Found:
+                    h,w = self.img.shape
+                    self.pts = np.float32([[0,0],[0,h-1],[w-1,h-1],[w-1,0]]).reshape(-1,1,2)
+                    self.dst = cv2.perspectiveTransform(self.pts,self.M)
+                    self.perspectiveM = cv2.getPerspectiveTransform(np.float32(self.dst),self.pts)
+                    self.cut_image = cv2.warpPerspective(self.frame, self.perspectiveM, self.img.shape)
+                    self.detect_icon()
+                elif self.haventFound < 0:#if not self.Found:
+                    self.counterFrame = 0
+                    self.label = -1
+            #print(self.Found)
             # cv2.imshow('frame',self.frame)
             if self.label > -1:
                 self.tvecs.shape = (3,1)    

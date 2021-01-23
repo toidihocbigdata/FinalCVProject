@@ -176,15 +176,15 @@ class AR:
         # attempt to detect glyphs
         results = []
 
-        try:
+        if True:
             if us is not True:
                 # results = self.glyphs.detect(image) #TODO create detector
                 results = self.glyphs.detect(cv2.flip(image, 1)) #TODO create detector
             else:
                 results = self.detector.main_detect(image)
-        except Exception as ex:
-            print("Exception !: ")
-            print(ex)
+        # except Exception as ex:
+        #     print("Exception !: ")
+        #     print(ex)
 
         if not results: 
             return
